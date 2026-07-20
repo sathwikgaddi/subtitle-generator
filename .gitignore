@@ -1,0 +1,20 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+
+# Test results
+[Tt]est[Rr]esult*/
+*.trx
+
+# Environment / secrets
+.env
+*.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
