@@ -199,7 +199,9 @@ public record TranscriptionResult(
     string Text,
     string LanguageCode,
     double LanguageConfidence,
-    IReadOnlyList<WordTimestamp> Words);
+    IReadOnlyList<TranscriptionWord> Words);
+
+public record TranscriptionWord(string Text, int StartMs, int EndMs);
 ```
 
 **MVP default:** a pay-per-use hosted transcription API (e.g. OpenAI's
@@ -212,24 +214,60 @@ volume grows enough that per-minute pricing stops being the cheaper
 option, §7 covers the switch to self-hosting — the interface above is what
 makes that swap a config change, not a rewrite.
 
+**Model choice within OpenAI is not simply "cheapest":** OpenAI has newer,
+cheaper transcription models (`gpt-4o-transcribe`, `gpt-4o-mini-transcribe`),
+but as of this writing they only support plain `json`/`text` output —
+`whisper-1` is the only OpenAI transcription model that supports
+`timestamp_granularities` (word-level timestamps), which the highlighting
+feature and cue-timing design both depend on. Verify this is still true
+before ever changing the configured model — it's the kind of provider
+capability detail that can change between releases.
+
 ### 3.2 LLM Provider
+
+Schema-first, not free-text: every pipeline stage needs a parsed, validated
+object back, not text to regex apart, so the interface is built around
+structured output rather than a plain string completion:
 
 ```csharp
 public interface ILlmProvider
 {
-    string ProviderName { get; }   // e.g. "openai"
-    string ModelName { get; }      // e.g. "gpt-4o-mini"
+    string ProviderName { get; }
+    string ModelName { get; }
 
-    Task<string> CompleteAsync(string renderedPrompt, CancellationToken ct);
+    Task<TResult> CompleteStructuredAsync<TResult>(
+        LlmStructuredRequest request, CancellationToken ct) where TResult : class;
 }
+
+public sealed record LlmStructuredRequest(
+    string SystemPrompt, string UserPrompt, JsonSchemaSpec ResponseSchema,
+    IReadOnlyDictionary<string, object>? ModelParams = null);
+
+public sealed record JsonSchemaSpec(string Name, string SchemaJson, bool Strict = true);
 ```
 
-**MVP default:** a low-cost hosted small/mid-tier model (e.g. a
-GPT-4o-mini-class or equivalent model chosen at implementation time by
-comparing current per-token pricing and Telugu/Hindi quality). The same
-"pay-per-use beats idle compute at this traffic" reasoning as §3.1 applies
-— self-hosting an open-source LLM would mean provisioning a GPU-capable
-host running continuously for occasional bursts of work.
+Each concrete provider enforces the schema its own way without leaking that
+mechanism to callers: the OpenAI implementation uses
+`response_format: { type: "json_schema", strict: true }`; a future Claude
+implementation would use forced tool-calling; a future Gemini implementation
+would use its native `responseSchema`. A failure to parse the response into
+the requested schema throws `LlmStructuredOutputException` with the raw
+response attached, handled by the same `processing_jobs` retry/backoff as
+any other transient failure — no special-casing.
+
+**MVP default:** OpenAI, chosen as the *initial* provider, not a permanent
+one — a Claude/Gemini implementation must be addable later as a pure DI
+swap (new options class + new provider class + one new config value),
+never touching the pipeline stages that consume this interface. Provider
+and model are both config-driven (`Ai:Llm:Provider`, `Ai:Llm:OpenAi:Model`),
+never hard-coded, and picked for cost *without* compromising quality on the
+tasks that need real language nuance (cleanup, translation, romanization) —
+the cheapest available tier was deliberately not the default; see the
+provider-evaluation gate in [Roadmap.md](Roadmap.md) for how that trade-off
+gets validated with real data before launch. The same "pay-per-use beats
+idle compute at this traffic" reasoning as §3.1 applies — self-hosting an
+open-source LLM would mean provisioning a GPU-capable host running
+continuously for occasional bursts of work.
 
 One `ILlmProvider` call is made per stage (NativeCleanup, TranslateToEnglish,
 Romanize, GenerateHighlights) per video — four calls total, not one giant
