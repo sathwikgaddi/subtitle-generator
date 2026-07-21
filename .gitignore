@@ -12,6 +12,9 @@ obj/
 .env
 *.env.local
 
+# Local video/audio storage (IVideoStorage's local-disk implementation)
+.local-data/
+
 # OS
 .DS_Store
 Thumbs.db
