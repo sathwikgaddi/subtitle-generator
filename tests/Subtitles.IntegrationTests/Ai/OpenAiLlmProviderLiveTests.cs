@@ -7,6 +7,35 @@ using Xunit.Abstractions;
 namespace Subtitles.IntegrationTests.Ai;
 
 /// <summary>
+/// Logs the raw outgoing request body and raw incoming response body through the given
+/// sink — wraps the real network handler so nothing about the actual HTTP traffic changes,
+/// it's purely observational. Useful for LiveOpenAI tests when you want to see exactly what
+/// went over the wire, not just the parsed C# result.
+/// </summary>
+public sealed class LoggingDelegatingHandler(Action<string> log) : DelegatingHandler(new HttpClientHandler())
+{
+    protected override async Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        if (request.Content is not null)
+        {
+            var requestBody = await request.Content.ReadAsStringAsync(cancellationToken);
+            log($"--- REQUEST {request.Method} {request.RequestUri} ---\n{requestBody}");
+        }
+
+        var response = await base.SendAsync(request, cancellationToken);
+
+        var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+        log($"--- RESPONSE {(int)response.StatusCode} {response.StatusCode} ---\n{responseBody}");
+
+        // The response content stream was already consumed above to log it — hand back a
+        // fresh copy so the caller (OpenAiLlmProvider) can still read it normally.
+        response.Content = new StringContent(responseBody);
+        return response;
+    }
+}
+
+/// <summary>
 /// Hits the real OpenAI API — costs a fraction of a cent per run. Excluded from normal
 /// `dotnet test` / CI via the LiveOpenAI trait (see .github/workflows/ci.yml); run manually
 /// with: dotnet test --filter "Category=LiveOpenAI"
@@ -41,7 +70,8 @@ public class OpenAiLlmProviderLiveTests(ITestOutputHelper output)
 
         var model = Environment.GetEnvironmentVariable("OPENAI_TEST_MODEL") ?? "gpt-5.6-terra";
 
-        using var httpClient = new HttpClient { BaseAddress = new Uri("https://api.openai.com/v1/") };
+        using var loggingHandler = new LoggingDelegatingHandler(output.WriteLine);
+        using var httpClient = new HttpClient(loggingHandler) { BaseAddress = new Uri("https://api.openai.com/v1/") };
         var options = Options.Create(new OpenAiLlmOptions { ApiKey = apiKey, Model = model });
         var provider = new OpenAiLlmProvider(httpClient, options);
 
@@ -53,7 +83,8 @@ public class OpenAiLlmProviderLiveTests(ITestOutputHelper output)
         var result = await provider.CompleteStructuredAsync<CleanupResult>(
             new LlmStructuredRequest(systemPrompt, rawTranscript, CleanupSchema), CancellationToken.None);
 
-        output.WriteLine($"Model: {provider.ModelName}");
+        output.WriteLine($"--- PARSED RESULT ---");
+        output.WriteLine($"Model:   {provider.ModelName}");
         output.WriteLine($"Raw:     {rawTranscript}");
         output.WriteLine($"Cleaned: {result.CleanedText}");
 
