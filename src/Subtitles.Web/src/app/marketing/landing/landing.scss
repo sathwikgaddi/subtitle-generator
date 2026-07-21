@@ -1,0 +1,400 @@
+// Dark, editorial marketing page. The signature visual idea is the
+// highlighter mark (`--highlight`) — tied directly to the product's actual
+// word-highlighting feature, not a generic gradient every SaaS landing page
+// uses right now. Everything else comes from Material's --mat-sys-* tokens
+// (theme-type: dark in styles.scss) so this stays in sync with the rest of
+// the app automatically instead of hand-maintaining colors per component.
+
+.landing {
+  overflow-x: hidden;
+  background: var(--mat-sys-surface);
+}
+
+.highlight-mark {
+  background: var(--highlight);
+  color: var(--highlight-ink);
+  padding: 0.05em 0.3em;
+  border-radius: 4px;
+  font-weight: 700;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+// ---------------------------------------------------------------- nav ----
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px clamp(20px, 5vw, 64px);
+  background: color-mix(in srgb, var(--mat-sys-surface) 85%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--mat-sys-on-surface);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+
+  mat-icon {
+    color: var(--mat-sys-primary);
+  }
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+// --------------------------------------------------------------- hero ----
+.hero {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: clamp(64px, 10vw, 120px) clamp(20px, 5vw, 64px) 48px;
+  text-align: center;
+  animation: rise-in 0.5s ease-out both;
+}
+
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin-bottom: 24px;
+}
+
+.hero h1 {
+  margin: 0 0 20px;
+  font-size: clamp(2rem, 4.2vw, 3rem);
+  line-height: 1.18;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--mat-sys-on-surface);
+}
+
+.hero-subtext {
+  margin: 0 auto 36px;
+  max-width: 520px;
+  font-size: 1.125rem;
+  line-height: 1.6;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+.cta-primary {
+  height: 48px;
+  padding: 0 24px !important;
+  font-weight: 600;
+
+  mat-icon {
+    margin-left: 4px;
+  }
+}
+
+.cta-secondary {
+  height: 48px;
+  padding: 0 24px !important;
+  font-weight: 600;
+}
+
+// --------------------------------------------------------- demo section ----
+.demo-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 0 clamp(20px, 5vw, 64px) clamp(64px, 8vw, 96px);
+  animation: rise-in 0.5s 0.1s ease-out both;
+}
+
+.demo-card {
+  width: min(560px, 100%);
+  border-radius: 18px;
+  background: var(--mat-sys-surface-container);
+  border: 1px solid var(--mat-sys-outline-variant);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.demo-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  background: var(--mat-sys-surface-container-low);
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+}
+
+.demo-card-icon {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.demo-title {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--mat-sys-on-surface-variant);
+  font-family: 'SFMono-Regular', Consolas, monospace;
+}
+
+.demo-badge {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+  font-size: 0.72rem;
+  font-weight: 600;
+
+  mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.demo-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 28px 24px;
+}
+
+.demo-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.demo-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--mat-sys-on-surface-variant);
+  font-weight: 700;
+}
+
+.demo-text {
+  margin: 0;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: var(--mat-sys-on-surface);
+}
+
+.demo-text-native {
+  font-size: 1.2rem;
+}
+
+.demo-caption {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--mat-sys-on-surface-variant);
+  text-align: center;
+}
+
+// ------------------------------------------------------------ sections ----
+.section {
+  padding: clamp(64px, 8vw, 96px) clamp(20px, 5vw, 64px);
+}
+
+.features {
+  background: var(--mat-sys-surface);
+}
+
+.how-it-works {
+  background: var(--mat-sys-surface-container-low);
+}
+
+.section-heading {
+  max-width: 640px;
+  margin: 0 auto 48px;
+  text-align: center;
+}
+
+.section-eyebrow {
+  display: inline-block;
+  color: var(--mat-sys-primary);
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 12px;
+}
+
+.section-heading h2 {
+  margin: 0;
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--mat-sys-on-surface);
+}
+
+// -------------------------------------------------------- feature grid ----
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.feature-card {
+  padding: 28px 24px;
+  border-radius: 16px;
+  background: var(--mat-sys-surface-container);
+  border: 1px solid var(--mat-sys-outline-variant);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
+  }
+
+  h3 {
+    margin: 0 0 8px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--mat-sys-on-surface);
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.55;
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.feature-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+  margin-bottom: 16px;
+}
+
+// -------------------------------------------------------------- steps ----
+.steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.step {
+  position: relative;
+  padding-top: 8px;
+}
+
+.step-number {
+  display: block;
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--mat-sys-primary);
+  margin-bottom: 8px;
+}
+
+.step h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--mat-sys-on-surface);
+}
+
+.step p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+// ------------------------------------------------------------ final CTA ----
+.final-cta {
+  background: var(--mat-sys-surface-container-high);
+}
+
+.final-cta-card {
+  max-width: 640px;
+  margin: 0 auto;
+  text-align: center;
+  color: var(--mat-sys-on-surface);
+
+  h2 {
+    margin: 0 0 12px;
+    font-size: clamp(1.5rem, 3vw, 2.25rem);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  p {
+    margin: 0 0 28px;
+    color: var(--mat-sys-on-surface-variant);
+    font-size: 1.05rem;
+  }
+
+  a {
+    height: 48px;
+    padding: 0 28px !important;
+    font-weight: 600;
+  }
+}
+
+// ------------------------------------------------------------- footer ----
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 24px clamp(20px, 5vw, 64px);
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface-variant);
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.footer-note {
+  font-size: 0.8rem;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero,
+  .demo-section {
+    animation: none;
+  }
+}

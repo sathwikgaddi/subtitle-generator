@@ -1,0 +1,24 @@
+.shell-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  gap: 8px;
+}
+
+.shell-brand-icon {
+  color: var(--mat-sys-primary);
+}
+
+.shell-brand-name {
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.shell-spacer {
+  flex: 1 1 auto;
+}
+
+.shell-content {
+  min-height: calc(100% - 64px);
+  background: var(--mat-sys-surface-container-low);
+}

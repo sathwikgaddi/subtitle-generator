@@ -1,0 +1,110 @@
+// Shared layout for the login/register pages — imported via `@use` from each
+// component's own stylesheet rather than duplicated.
+
+.auth-page {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 24px;
+  background: var(--mat-sys-surface);
+}
+
+.auth-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  animation: auth-fade-in 0.5s ease-out both;
+}
+
+.auth-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--mat-sys-on-surface);
+}
+
+.auth-brand-icon {
+  color: var(--mat-sys-primary);
+}
+
+.auth-brand-name {
+  font-size: 1.25rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+// A thin "caption bar" that reveals left-to-right, echoing subtitles appearing on screen —
+// uses the same highlighter accent as the landing page's word-highlighting demo.
+.auth-brand-caption {
+  height: 4px;
+  width: 64px;
+  border-radius: 2px;
+  background: var(--highlight);
+  animation: auth-caption-reveal 0.7s 0.2s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  animation: auth-fade-in 0.5s 0.1s ease-out both;
+}
+
+@keyframes auth-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes auth-caption-reveal {
+  from {
+    width: 0;
+    opacity: 0;
+  }
+  to {
+    width: 64px;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-brand,
+  .auth-brand-caption,
+  .auth-card {
+    animation: none;
+  }
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.auth-error {
+  color: var(--mat-sys-error);
+  font-size: 0.875rem;
+  margin: 0 0 8px;
+}
+
+.auth-submit {
+  height: 44px;
+  margin-top: 8px;
+}
+
+.auth-footer {
+  display: flex;
+  gap: 6px;
+  padding: 16px;
+  font-size: 0.875rem;
+  color: var(--mat-sys-on-surface-variant);
+}

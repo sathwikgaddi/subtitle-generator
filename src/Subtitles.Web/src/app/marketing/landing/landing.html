@@ -1,0 +1,136 @@
+<div class="landing">
+  <nav class="nav">
+    <div class="nav-brand">
+      <mat-icon>closed_caption</mat-icon>
+      <span>Subtitle Generator</span>
+    </div>
+    <div class="nav-actions">
+      @if (auth.isAuthenticated()) {
+        <a mat-flat-button color="primary" routerLink="/videos">Go to dashboard</a>
+      } @else {
+        <a mat-button routerLink="/login">Sign in</a>
+        <a mat-flat-button color="primary" routerLink="/register">Get started</a>
+      }
+    </div>
+  </nav>
+
+  <section class="hero">
+    <span class="hero-eyebrow">AI-first subtitle generation</span>
+    <h1>
+      Subtitles people can actually follow — with the words that matter
+      <mark class="highlight-mark">highlighted</mark>
+      automatically.
+    </h1>
+    <p class="hero-subtext">
+      Upload once. Get native-script, English, and romanized subtitles from a single
+      AI-powered pass — then fine-tune the highlights by hand.
+    </p>
+    <div class="hero-actions">
+      @if (auth.isAuthenticated()) {
+        <a mat-flat-button color="primary" class="cta-primary" routerLink="/videos">Go to dashboard</a>
+      } @else {
+        <a mat-flat-button color="primary" class="cta-primary" routerLink="/register">
+          Start for free
+          <mat-icon>arrow_forward</mat-icon>
+        </a>
+        <a mat-stroked-button class="cta-secondary" routerLink="/login">Sign in</a>
+      }
+    </div>
+  </section>
+
+  <section class="demo-section">
+    <div class="demo-card">
+      <div class="demo-card-header">
+        <mat-icon class="demo-card-icon">movie</mat-icon>
+        <span class="demo-title">interview_clip.mp4</span>
+        <span class="demo-badge">
+          <mat-icon>auto_awesome</mat-icon>
+          Generated automatically
+        </span>
+      </div>
+
+      <div class="demo-body">
+        <div class="demo-row">
+          <span class="demo-label">Native</span>
+          <p class="demo-text demo-text-native">
+            <mark class="highlight-mark">ఈరోజు</mark> మనం
+            <mark class="highlight-mark">మాట్లాడుకుందాం</mark>
+          </p>
+        </div>
+        <div class="demo-row">
+          <span class="demo-label">Romanized</span>
+          <p class="demo-text">
+            <mark class="highlight-mark">Eeroju</mark> manam
+            <mark class="highlight-mark">matladukundham</mark>
+          </p>
+        </div>
+        <div class="demo-row">
+          <span class="demo-label">English</span>
+          <p class="demo-text">
+            <mark class="highlight-mark">Today</mark> let's
+            <mark class="highlight-mark">talk</mark>.
+          </p>
+        </div>
+      </div>
+    </div>
+    <p class="demo-caption">
+      One upload, three scripts — no manual language selection, no manual highlighting required.
+    </p>
+  </section>
+
+  <section class="section features">
+    <div class="section-heading">
+      <span class="section-eyebrow">How it helps</span>
+      <h2>Everything you need to go from upload to publish-ready subtitles.</h2>
+    </div>
+
+    <div class="feature-grid">
+      @for (feature of features; track feature.title) {
+        <div class="feature-card">
+          <div class="feature-icon">
+            <mat-icon>{{ feature.icon }}</mat-icon>
+          </div>
+          <h3>{{ feature.title }}</h3>
+          <p>{{ feature.description }}</p>
+        </div>
+      }
+    </div>
+  </section>
+
+  <section class="section how-it-works">
+    <div class="section-heading">
+      <span class="section-eyebrow">The pipeline</span>
+      <h2>Four steps. One upload.</h2>
+    </div>
+
+    <div class="steps">
+      @for (step of steps; track step.number) {
+        <div class="step">
+          <span class="step-number">{{ step.number }}</span>
+          <h3>{{ step.title }}</h3>
+          <p>{{ step.description }}</p>
+        </div>
+      }
+    </div>
+  </section>
+
+  <section class="section final-cta">
+    <div class="final-cta-card">
+      <h2>Ready to see your content in every script it needs to reach?</h2>
+      <p>Create a free account and upload your first video in minutes.</p>
+      @if (auth.isAuthenticated()) {
+        <a mat-flat-button color="primary" routerLink="/videos">Go to dashboard</a>
+      } @else {
+        <a mat-flat-button color="primary" routerLink="/register">Start for free</a>
+      }
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="nav-brand">
+      <mat-icon>closed_caption</mat-icon>
+      <span>Subtitle Generator</span>
+    </div>
+    <span class="footer-note">&copy; 2026 Subtitle Generator. Built for creators.</span>
+  </footer>
+</div>

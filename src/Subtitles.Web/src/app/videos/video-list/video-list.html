@@ -1,0 +1,45 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1>Your videos</h1>
+      <p class="page-subtitle">Upload a video to generate native, English, and romanized subtitles.</p>
+    </div>
+
+    <button
+      mat-flat-button
+      color="primary"
+      disabled
+      matTooltip="Video upload lands in an upcoming milestone."
+    >
+      <mat-icon>upload</mat-icon>
+      Upload video
+    </button>
+  </header>
+
+  @if (loading()) {
+    <div class="state-panel">
+      <mat-spinner diameter="32" />
+    </div>
+  } @else if (errorMessage()) {
+    <div class="state-panel">
+      <mat-icon class="state-icon state-icon-error">error_outline</mat-icon>
+      <p>{{ errorMessage() }}</p>
+    </div>
+  } @else if (videos().length === 0) {
+    <div class="state-panel">
+      <mat-icon class="state-icon">movie</mat-icon>
+      <h2>No videos yet</h2>
+      <p>Videos you upload will show up here with live processing status.</p>
+    </div>
+  } @else {
+    <ul class="video-list">
+      @for (video of videos(); track video.videoId) {
+        <li class="video-row">
+          <mat-icon>movie</mat-icon>
+          <span class="video-name">{{ video.originalFileName }}</span>
+          <span class="video-status">{{ video.status }}</span>
+        </li>
+      }
+    </ul>
+  }
+</div>

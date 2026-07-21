@@ -1,0 +1,20 @@
+<mat-toolbar class="shell-toolbar">
+  <mat-icon class="shell-brand-icon">closed_caption</mat-icon>
+  <span class="shell-brand-name">Subtitle Generator</span>
+
+  <span class="shell-spacer"></span>
+
+  <button mat-icon-button [matMenuTriggerFor]="accountMenu" aria-label="Account menu">
+    <mat-icon>account_circle</mat-icon>
+  </button>
+  <mat-menu #accountMenu="matMenu">
+    <button mat-menu-item (click)="signOut()">
+      <mat-icon>logout</mat-icon>
+      <span>Sign out</span>
+    </button>
+  </mat-menu>
+</mat-toolbar>
+
+<main class="shell-content">
+  <router-outlet />
+</main>
