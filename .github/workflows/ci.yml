@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend (.NET)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      # Category!=LiveOpenAI excludes any test that hits a real AI provider —
+      # see docs/Architecture.md §3 and the plan's "LiveOpenAI" trait convention.
+      # Nothing carries that tag yet; this filter is here so it's already in
+      # place once M0.5+ adds tests that do.
+      - name: Test
+        run: dotnet test --no-build --configuration Release --filter "Category!=LiveOpenAI"
+
+  frontend:
+    name: Frontend (Angular)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/Subtitles.Web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: src/Subtitles.Web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npx ng build
+
+      - name: Lint
+        run: npx ng lint
+
+      - name: Test
+        run: npx ng test --watch=false --browsers=ChromeHeadless
