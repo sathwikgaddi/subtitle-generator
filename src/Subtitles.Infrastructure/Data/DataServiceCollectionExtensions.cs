@@ -15,6 +15,8 @@ public static class DataServiceCollectionExtensions
         services.AddDbContext<SubtitlesDbContext>(options =>
             options.UseNpgsql(connectionString).UseSnakeCaseNamingConvention());
 
+        services.AddScoped<JobQueueRepository>();
+
         return services;
     }
 }
