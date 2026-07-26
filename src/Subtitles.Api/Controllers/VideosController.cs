@@ -46,24 +46,41 @@ public class VideosController(SubtitlesDbContext db, IVideoStorage storage, JobQ
         await using var readStream = file.OpenReadStream();
         var storagePath = await storage.SaveAsync(videoId, file.FileName, readStream, ct);
 
-        var video = new Video
+        try
         {
-            Id = videoId,
-            AccountId = User.GetAccountId(),
-            UploadedByUserId = User.GetUserId(),
-            OriginalFileName = file.FileName,
-            BlobPath = storagePath,
-            Status = VideoStatus.Processing,
-            CreatedAt = now,
-            UpdatedAt = now,
-        };
+            var video = new Video
+            {
+                Id = videoId,
+                AccountId = User.GetAccountId(),
+                UploadedByUserId = User.GetUserId(),
+                OriginalFileName = file.FileName,
+                BlobPath = storagePath,
+                Status = VideoStatus.Processing,
+                CreatedAt = now,
+                UpdatedAt = now,
+            };
 
-        db.Videos.Add(video);
-        await db.SaveChangesAsync(ct);
-        await jobQueue.EnqueueAsync(video.Id, JobType.ExtractAudio, ct);
+            // The video row and its first job must land together — if the process died
+            // between two separate commits here, a video could get stuck at "Processing"
+            // forever with no job ever created to move it forward. One transaction (even
+            // though EnqueueAsync issues its own SaveChanges call, it's the same DbContext,
+            // so it's still the same transaction until CommitAsync).
+            await using var transaction = await db.Database.BeginTransactionAsync(ct);
+            db.Videos.Add(video);
+            await db.SaveChangesAsync(ct);
+            await jobQueue.EnqueueAsync(video.Id, JobType.ExtractAudio, ct);
+            await transaction.CommitAsync(ct);
 
-        var summary = new VideoSummary(video.Id, video.OriginalFileName, video.Status.ToString(), null, null, video.CreatedAt);
-        return CreatedAtAction(nameof(GetById), new { id = video.Id }, summary);
+            var summary = new VideoSummary(video.Id, video.OriginalFileName, video.Status.ToString(), null, null, video.CreatedAt);
+            return CreatedAtAction(nameof(GetById), new { id = video.Id }, summary);
+        }
+        catch
+        {
+            // Compensating cleanup: don't leave an orphaned file on disk if the DB portion
+            // failed after the file was already written.
+            await storage.DeleteAsync(storagePath, CancellationToken.None);
+            throw;
+        }
     }
 
     /// <summary>Used by Upload's Location header and, later, by polling clients per API.md §2.</summary>
@@ -94,6 +111,9 @@ public class VideosController(SubtitlesDbContext db, IVideoStorage storage, JobQ
     public async Task<ActionResult<PagedResult<VideoSummary>>> List(
         [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
+        page = Math.Max(page, 1);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
         var accountId = User.GetAccountId();
 
         var query = db.Videos.AsNoTracking()

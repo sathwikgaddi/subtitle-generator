@@ -22,6 +22,11 @@ public class JobQueueRepository(SubtitlesDbContext db)
 
     private const int MaxAttempts = 4;
 
+    // If a worker claims a job and then dies (crash, kill, host eviction) before completing or
+    // failing it, the row would otherwise sit at Running forever — nothing else was watching
+    // it. This is how long a claim is trusted before another worker is allowed to reclaim it.
+    private static readonly TimeSpan StaleLockThreshold = TimeSpan.FromMinutes(20);
+
     public async Task<ProcessingJob> EnqueueAsync(Guid videoId, JobType jobType, CancellationToken ct)
     {
         var job = new ProcessingJob
@@ -38,6 +43,30 @@ public class JobQueueRepository(SubtitlesDbContext db)
         db.ProcessingJobs.Add(job);
         await db.SaveChangesAsync(ct);
         return job;
+    }
+
+    /// <summary>
+    /// Resets any job that's been Running longer than StaleLockThreshold back to Queued (or to
+    /// Failed if it's already exhausted MaxAttempts) — same outcome as FailAsync, just
+    /// triggered by a lock going stale instead of an exception being caught. Call this once per
+    /// poll loop iteration; it's a no-op (and cheap) when nothing is actually stale.
+    /// </summary>
+    public async Task<int> ReclaimStaleJobsAsync(CancellationToken ct)
+    {
+        var staleCutoff = DateTimeOffset.UtcNow - StaleLockThreshold;
+        var now = DateTimeOffset.UtcNow;
+
+        return await db.ProcessingJobs
+            .Where(j => j.Status == JobStatus.Running && j.LockedAt != null && j.LockedAt < staleCutoff)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(j => j.AttemptCount, j => j.AttemptCount + 1)
+                .SetProperty(j => j.Status, j => (j.AttemptCount + 1) >= MaxAttempts ? JobStatus.Failed : JobStatus.Queued)
+                .SetProperty(j => j.ErrorMessage, "Reclaimed after worker stopped responding (stale lock).")
+                .SetProperty(j => j.LockedBy, (string?)null)
+                .SetProperty(j => j.LockedAt, (DateTimeOffset?)null)
+                .SetProperty(j => j.CompletedAt, j => (j.AttemptCount + 1) >= MaxAttempts ? now : j.CompletedAt)
+                .SetProperty(j => j.AvailableAt, now),
+                ct);
     }
 
     /// <summary>

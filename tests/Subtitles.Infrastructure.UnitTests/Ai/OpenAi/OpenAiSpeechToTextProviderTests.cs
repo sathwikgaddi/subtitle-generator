@@ -38,7 +38,7 @@ public class OpenAiSpeechToTextProviderTests
         });
         var provider = CreateProvider(handler);
 
-        var result = await provider.TranscribeAsync(new MemoryStream([1, 2, 3]), CancellationToken.None);
+        var result = await provider.TranscribeAsync(new MemoryStream([1, 2, 3]), "audio.mp3", CancellationToken.None);
 
         Assert.Equal("Eeroju manam matladukundham", result.Text);
         Assert.Equal("telugu", result.LanguageCode);
@@ -59,11 +59,14 @@ public class OpenAiSpeechToTextProviderTests
         });
         var provider = CreateProvider(handler);
 
-        await provider.TranscribeAsync(new MemoryStream([1, 2, 3]), CancellationToken.None);
+        await provider.TranscribeAsync(new MemoryStream([1, 2, 3]), "audio.mp3", CancellationToken.None);
 
         Assert.Contains("whisper-1", handler.LastRequestBody);
         Assert.Contains("verbose_json", handler.LastRequestBody);
         Assert.Contains("word", handler.LastRequestBody);
+        // Locks in the fix: Whisper determines audio format from the filename's extension,
+        // so the multipart part must carry a real extension, not a bare "audio".
+        Assert.Contains("audio.mp3", handler.LastRequestBody);
     }
 
     [Fact]
@@ -76,7 +79,7 @@ public class OpenAiSpeechToTextProviderTests
         var provider = CreateProvider(handler);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            provider.TranscribeAsync(new MemoryStream([1, 2, 3]), CancellationToken.None));
+            provider.TranscribeAsync(new MemoryStream([1, 2, 3]), "audio.mp3", CancellationToken.None));
 
         Assert.Contains("invalid file format", ex.Message);
     }

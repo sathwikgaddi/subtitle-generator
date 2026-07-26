@@ -12,4 +12,8 @@ public interface IVideoStorage
     Task<string> SaveAsync(Guid videoId, string fileName, Stream content, CancellationToken ct);
 
     Task<Stream> OpenReadAsync(string storagePath, CancellationToken ct);
+
+    /// <summary>Best-effort delete — used for compensating cleanup when a save succeeds but a
+    /// subsequent step (e.g. the DB write) fails. Should not throw if the path doesn't exist.</summary>
+    Task DeleteAsync(string storagePath, CancellationToken ct);
 }

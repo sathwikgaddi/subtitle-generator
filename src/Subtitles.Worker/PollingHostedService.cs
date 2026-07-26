@@ -27,6 +27,7 @@ public class PollingHostedService(IServiceScopeFactory scopeFactory, ILogger<Pol
             bool processedSomething;
             try
             {
+                await ReclaimStaleJobsAsync(stoppingToken);
                 processedSomething = await TryProcessOneJobAsync(stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -38,6 +39,23 @@ public class PollingHostedService(IServiceScopeFactory scopeFactory, ILogger<Pol
             {
                 await Task.Delay(PollInterval, stoppingToken);
             }
+        }
+    }
+
+    /// <summary>
+    /// A job whose worker crashed/died mid-processing would otherwise sit at Running forever —
+    /// nothing else was watching it. Cheap no-op when nothing is actually stale, so it's fine
+    /// to check every poll iteration at this project's traffic scale.
+    /// </summary>
+    private async Task ReclaimStaleJobsAsync(CancellationToken ct)
+    {
+        using var scope = scopeFactory.CreateScope();
+        var jobQueue = scope.ServiceProvider.GetRequiredService<JobQueueRepository>();
+        var reclaimed = await jobQueue.ReclaimStaleJobsAsync(ct);
+
+        if (reclaimed > 0)
+        {
+            logger.LogWarning("Reclaimed {Count} job(s) with a stale lock (worker likely crashed).", reclaimed);
         }
     }
 

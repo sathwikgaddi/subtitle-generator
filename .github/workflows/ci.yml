@@ -16,6 +16,12 @@ jobs:
         with:
           global-json-file: global.json
 
+      # Explicit, not relying on whatever happens to ship in the runner image —
+      # needed by ExtractAudioStage's integration test (P1.2) and every later
+      # ffmpeg-touching stage.
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: Restore
         run: dotnet restore
 

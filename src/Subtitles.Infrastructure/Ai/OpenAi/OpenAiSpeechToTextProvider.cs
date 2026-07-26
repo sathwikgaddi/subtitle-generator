@@ -17,12 +17,12 @@ public class OpenAiSpeechToTextProvider(HttpClient httpClient, IOptions<OpenAiSt
     public string ProviderName => "openai";
     public string ModelName => _options.Model;
 
-    public async Task<TranscriptionResult> TranscribeAsync(Stream audio, CancellationToken ct)
+    public async Task<TranscriptionResult> TranscribeAsync(Stream audio, string fileName, CancellationToken ct)
     {
         using var content = new MultipartFormDataContent();
         using var audioContent = new StreamContent(audio);
         audioContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-        content.Add(audioContent, "file", "audio");
+        content.Add(audioContent, "file", fileName);
         content.Add(new StringContent(_options.Model), "model");
         content.Add(new StringContent("verbose_json"), "response_format");
         content.Add(new StringContent("word"), "timestamp_granularities[]");

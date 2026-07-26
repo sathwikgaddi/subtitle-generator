@@ -6,7 +6,11 @@ public interface ISpeechToTextProvider
     string ProviderName { get; }
     string ModelName { get; }
 
-    Task<TranscriptionResult> TranscribeAsync(Stream audio, CancellationToken ct);
+    /// <summary>
+    /// fileName's extension matters — Whisper's API determines audio format from it (e.g.
+    /// "audio.mp3"), not from content-sniffing. Pass the real extension of what's in the stream.
+    /// </summary>
+    Task<TranscriptionResult> TranscribeAsync(Stream audio, string fileName, CancellationToken ct);
 }
 
 public sealed record TranscriptionResult(
