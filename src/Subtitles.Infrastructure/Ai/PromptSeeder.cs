@@ -19,6 +19,7 @@ public class PromptSeeder(SubtitlesDbContext db)
         await SeedTaskAsync(PromptTask.NativeCleanup, "NativeCleanup.v1.txt", ct);
         await SeedTaskAsync(PromptTask.TranslateToEnglish, "TranslateToEnglish.v1.txt", ct);
         await SeedTaskAsync(PromptTask.Romanize, "Romanize.v1.txt", ct);
+        await SeedTaskAsync(PromptTask.GenerateHighlights, "GenerateHighlights.v1.txt", ct);
     }
 
     private async Task SeedTaskAsync(PromptTask task, string embeddedFileName, CancellationToken ct)
