@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
+using Scalar.AspNetCore;
 using Subtitles.Api.Contracts;
 using Subtitles.Infrastructure.Auth;
 using Subtitles.Infrastructure.Data;
@@ -63,6 +64,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference(); // interactive API explorer at /scalar — dev-only
 }
 
 app.UseHttpsRedirection();

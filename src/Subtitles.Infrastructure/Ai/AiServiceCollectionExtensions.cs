@@ -16,6 +16,7 @@ public static class AiServiceCollectionExtensions
     {
         AddSpeechToTextProvider(services, configuration);
         AddLlmProvider(services, configuration);
+        services.AddScoped<PromptSeeder>();
         return services;
     }
 

@@ -16,4 +16,11 @@ builder.Services.AddHostedService<PollingHostedService>();
 // docs/Architecture.md §2.3 for the stage sequence.
 
 var host = builder.Build();
+
+using (var scope = host.Services.CreateScope())
+{
+    var seeder = scope.ServiceProvider.GetRequiredService<PromptSeeder>();
+    await seeder.SeedAsync(CancellationToken.None);
+}
+
 host.Run();
