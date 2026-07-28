@@ -70,6 +70,41 @@ public class OpenAiSpeechToTextProviderTests
     }
 
     [Fact]
+    public async Task TranscribeAsync_WithNullLanguage_ReturnsZeroConfidenceAndEmptyCode()
+    {
+        // Confirmed against a real OpenAI response (see OpenAiSpeechToTextProviderLiveTests):
+        // "language": null is what a genuinely no-speech/undetectable clip actually returns —
+        // there is no separate numeric confidence field on this endpoint at all.
+        const string fixture = """{"task":"transcribe","language":null,"duration":3.0,"text":"","words":[]}""";
+        var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(fixture),
+        });
+        var provider = CreateProvider(handler);
+
+        var result = await provider.TranscribeAsync(new MemoryStream([1, 2, 3]), "audio.mp3", CancellationToken.None);
+
+        Assert.Equal(string.Empty, result.LanguageCode);
+        Assert.Equal(0.0, result.LanguageConfidence);
+    }
+
+    [Fact]
+    public async Task TranscribeAsync_WithDetectedLanguage_ReturnsFullConfidence()
+    {
+        const string fixture = """{"task":"transcribe","language":"english","duration":3.0,"text":"hi","words":[]}""";
+        var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(fixture),
+        });
+        var provider = CreateProvider(handler);
+
+        var result = await provider.TranscribeAsync(new MemoryStream([1, 2, 3]), "audio.mp3", CancellationToken.None);
+
+        Assert.Equal("english", result.LanguageCode);
+        Assert.Equal(1.0, result.LanguageConfidence);
+    }
+
+    [Fact]
     public async Task TranscribeAsync_WithHttpErrorStatus_Throws()
     {
         var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.BadRequest)

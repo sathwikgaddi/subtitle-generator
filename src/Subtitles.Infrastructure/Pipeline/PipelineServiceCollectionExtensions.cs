@@ -11,6 +11,7 @@ public static class PipelineServiceCollectionExtensions
     {
         services.AddSingleton<FfmpegRunner>();
         services.AddScoped<IPipelineStage, ExtractAudioStage>();
+        services.AddScoped<IPipelineStage, TranscribeStage>();
 
         return services;
     }

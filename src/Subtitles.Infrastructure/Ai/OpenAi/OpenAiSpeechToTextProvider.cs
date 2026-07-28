@@ -44,8 +44,8 @@ public class OpenAiSpeechToTextProvider(HttpClient httpClient, IOptions<OpenAiSt
 
         var text = root.GetProperty("text").GetString() ?? string.Empty;
         var language = root.TryGetProperty("language", out var languageElement)
-            ? languageElement.GetString() ?? string.Empty
-            : string.Empty;
+            ? languageElement.GetString()
+            : null;
 
         var words = new List<TranscriptionWord>();
         if (root.TryGetProperty("words", out var wordsElement))
@@ -59,11 +59,14 @@ public class OpenAiSpeechToTextProvider(HttpClient httpClient, IOptions<OpenAiSt
             }
         }
 
-        // NOTE: the transcription endpoint's verbose_json response does not include a
-        // numeric language-detection confidence score alongside the detected language —
-        // 1.0 is a placeholder here. This needs verifying against a real response (the
-        // live smoke test below) before ProductRequirements.md §6.2's low-confidence
-        // banner logic can be built on top of it in P1.3.
-        return new TranscriptionResult(text, language, 1.0, words);
+        // Confirmed against a real response (OpenAiSpeechToTextProviderLiveTests): this
+        // endpoint's verbose_json has no numeric language-detection confidence field at all —
+        // not a low number, genuinely absent. What it does give us is "language": null when
+        // nothing usable was detected (e.g. silence/non-speech audio), vs. a populated code
+        // otherwise. That null/non-null signal is the only real confidence proxy this API
+        // exposes, so 0.0/1.0 here means "did Whisper detect a language," not a true
+        // probability — ProductRequirements.md §6.2's low-confidence UX should treat this
+        // binary correctly rather than expecting a graded score.
+        return new TranscriptionResult(text, language ?? string.Empty, language is null ? 0.0 : 1.0, words);
     }
 }
