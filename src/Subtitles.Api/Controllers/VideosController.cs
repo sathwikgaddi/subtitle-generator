@@ -83,15 +83,20 @@ public class VideosController(SubtitlesDbContext db, IVideoStorage storage, JobQ
         }
     }
 
-    /// <summary>Used by Upload's Location header and, later, by polling clients per API.md §2.</summary>
+    private static readonly SubtitleTrackType[] AllTrackTypes =
+        [SubtitleTrackType.Native, SubtitleTrackType.English, SubtitleTrackType.Romanized];
+
+    /// <summary>
+    /// Used by Upload's Location header and, per docs/API.md §2, as the only status mechanism
+    /// (no push channel) — the SPA polls this on an interval while status isn't yet terminal.
+    /// </summary>
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<VideoSummary>> GetById(Guid id, CancellationToken ct)
+    public async Task<ActionResult<VideoDetail>> GetById(Guid id, CancellationToken ct)
     {
         var accountId = User.GetAccountId();
 
         var video = await db.Videos.AsNoTracking()
             .Where(v => v.Id == id && v.AccountId == accountId)
-            .Select(v => new VideoSummary(v.Id, v.OriginalFileName, v.Status.ToString(), v.DurationSeconds, v.DetectedLanguageCode, v.CreatedAt))
             .FirstOrDefaultAsync(ct);
 
         if (video is null)
@@ -99,8 +104,125 @@ public class VideosController(SubtitlesDbContext db, IVideoStorage storage, JobQ
             return NotFound(ApiError.Of("video_not_found", "No video with the given id exists for this account."));
         }
 
-        return Ok(video);
+        var existingTrackStatuses = await db.SubtitleTracks.AsNoTracking()
+            .Where(t => t.VideoId == id)
+            .Select(t => new { t.TrackType, t.Status })
+            .ToDictionaryAsync(t => t.TrackType, t => t.Status, ct);
+
+        // Every track type is always listed, even before its row exists — a client needs to
+        // know a track is going to exist (as "Pending") to render its tab, locked, ahead of
+        // the stage that creates it actually running.
+        var tracks = AllTrackTypes
+            .Select(type => new TrackStatusSummary(
+                type.ToString(),
+                existingTrackStatuses.TryGetValue(type, out var status) ? status.ToString() : SubtitleTrackStatus.Pending.ToString()))
+            .ToList();
+
+        return Ok(new VideoDetail(
+            video.Id, video.OriginalFileName, video.Status.ToString(), video.DurationSeconds,
+            video.DetectedLanguageCode, video.DetectedLanguageConfidence, tracks, video.CreatedAt, video.UpdatedAt));
     }
+
+    /// <summary>docs/API.md §3 GET /videos/{id}/subtitles?type={Native|English|Romanized}.</summary>
+    [HttpGet("{id:guid}/subtitles")]
+    public async Task<ActionResult<SubtitleTrackResponse>> GetSubtitles(
+        Guid id, [FromQuery] SubtitleTrackType type, CancellationToken ct)
+    {
+        var accountId = User.GetAccountId();
+
+        var videoExists = await db.Videos.AsNoTracking().AnyAsync(v => v.Id == id && v.AccountId == accountId, ct);
+        if (!videoExists)
+        {
+            return NotFound(ApiError.Of("video_not_found", "No video with the given id exists for this account."));
+        }
+
+        var track = await db.SubtitleTracks.AsNoTracking()
+            .Where(t => t.VideoId == id && t.TrackType == type)
+            .Select(t => new
+            {
+                t.Id,
+                t.LanguageCode,
+                t.Status,
+                Cues = t.Cues
+                    .OrderBy(c => c.SequenceNumber)
+                    .Select(c => new SubtitleCueResponse(
+                        c.Id,
+                        c.SequenceNumber,
+                        c.StartTimeMs,
+                        c.EndTimeMs,
+                        c.EditedText ?? c.GeneratedText,
+                        c.EditedText != null,
+                        c.Words
+                            .OrderBy(w => w.SequenceNumber)
+                            .Select(w => new SubtitleWordResponse(
+                                w.Id, w.Text, w.IsHighlightedManualOverride ?? w.IsHighlightedAuto))
+                            .ToList()))
+                    .ToList(),
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (track is null)
+        {
+            return NotFound(ApiError.Of(
+                "track_not_found", $"The {type} track for this video does not exist yet — check its status via GET /videos/{{id}} first."));
+        }
+
+        var generationStage = TrackTypeToGenerationStage(type);
+        var generation = await db.AiGenerations.AsNoTracking()
+            .Where(g => g.VideoId == id && g.Stage == generationStage)
+            .Select(g => new
+            {
+                g.LlmProvider,
+                g.LlmModel,
+                PromptVersion = g.PromptVersion == null ? (int?)null : g.PromptVersion.Version,
+                g.GeneratedAt,
+                g.Reason,
+            })
+            .FirstOrDefaultAsync(ct);
+
+        var generatedBy = generation is null
+            ? null
+            : new GeneratedByInfo(generation.LlmProvider, generation.LlmModel, generation.PromptVersion, generation.GeneratedAt, generation.Reason);
+
+        return Ok(new SubtitleTrackResponse(type.ToString(), track.LanguageCode, track.Status.ToString(), generatedBy, track.Cues));
+    }
+
+    /// <summary>docs/API.md §3 GET /videos/{id}/generations.</summary>
+    [HttpGet("{id:guid}/generations")]
+    public async Task<ActionResult<VideoGenerationsResponse>> GetGenerations(Guid id, CancellationToken ct)
+    {
+        var accountId = User.GetAccountId();
+
+        var videoExists = await db.Videos.AsNoTracking().AnyAsync(v => v.Id == id && v.AccountId == accountId, ct);
+        if (!videoExists)
+        {
+            return NotFound(ApiError.Of("video_not_found", "No video with the given id exists for this account."));
+        }
+
+        var generations = await db.AiGenerations.AsNoTracking()
+            .Where(g => g.VideoId == id)
+            .OrderBy(g => g.GeneratedAt)
+            .Select(g => new GenerationEntry(
+                g.Stage.ToString(),
+                g.SpeechProvider,
+                g.SpeechModel,
+                g.LlmProvider,
+                g.LlmModel,
+                g.PromptVersion == null ? (int?)null : g.PromptVersion.Version,
+                g.GeneratedAt,
+                g.Reason))
+            .ToListAsync(ct);
+
+        return Ok(new VideoGenerationsResponse(id, generations));
+    }
+
+    private static GenerationStage TrackTypeToGenerationStage(SubtitleTrackType type) => type switch
+    {
+        SubtitleTrackType.Native => GenerationStage.NativeCleanup,
+        SubtitleTrackType.English => GenerationStage.TranslateToEnglish,
+        SubtitleTrackType.Romanized => GenerationStage.Romanize,
+        _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown subtitle track type."),
+    };
 
     /// <summary>
     /// docs/API.md §2 GET /videos. Real query against the (currently always-empty-until-

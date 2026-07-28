@@ -61,6 +61,12 @@ public class TranscribeStageTests(PostgresFixture fixture) : IClassFixture<Postg
             var video = await db.Videos.FindAsync([videoId], CancellationToken.None);
             Assert.Equal("en", video!.DetectedLanguageCode);
             Assert.Equal(0.97m, video.DetectedLanguageConfidence);
+
+            var generation = await db.AiGenerations
+                .SingleAsync(g => g.VideoId == videoId && g.Stage == GenerationStage.Transcribe);
+            Assert.Equal("fake", generation.SpeechProvider);
+            Assert.Equal("fake-model", generation.SpeechModel);
+            Assert.Equal(GenerationReasons.Initial, generation.Reason);
         }
         finally
         {

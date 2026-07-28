@@ -51,6 +51,19 @@ public class TranscribeStage(SubtitlesDbContext db, IVideoStorage storage, ISpee
         video.DetectedLanguageConfidence = (decimal)result.LanguageConfidence;
         video.UpdatedAt = DateTimeOffset.UtcNow;
 
+        var generation = await db.AiGenerations
+            .SingleOrDefaultAsync(g => g.VideoId == videoId && g.Stage == GenerationStage.Transcribe, ct);
+        if (generation is null)
+        {
+            generation = new AiGeneration { Id = Guid.NewGuid(), VideoId = videoId, Stage = GenerationStage.Transcribe };
+            db.AiGenerations.Add(generation);
+        }
+
+        generation.SpeechProvider = stt.ProviderName;
+        generation.SpeechModel = stt.ModelName;
+        generation.Reason = GenerationReasons.Initial;
+        generation.GeneratedAt = DateTimeOffset.UtcNow;
+
         await db.SaveChangesAsync(ct);
     }
 }
