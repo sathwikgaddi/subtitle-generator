@@ -13,6 +13,7 @@ public static class PipelineServiceCollectionExtensions
         services.AddScoped<IPipelineStage, ExtractAudioStage>();
         services.AddScoped<IPipelineStage, TranscribeStage>();
         services.AddScoped<IPipelineStage, NativeCleanupStage>();
+        services.AddScoped<IPipelineStage, TranslateToEnglishStage>();
 
         return services;
     }
