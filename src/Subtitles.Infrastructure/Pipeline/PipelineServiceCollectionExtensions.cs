@@ -14,6 +14,7 @@ public static class PipelineServiceCollectionExtensions
         services.AddScoped<IPipelineStage, TranscribeStage>();
         services.AddScoped<IPipelineStage, NativeCleanupStage>();
         services.AddScoped<IPipelineStage, TranslateToEnglishStage>();
+        services.AddScoped<IPipelineStage, RomanizeStage>();
 
         return services;
     }
