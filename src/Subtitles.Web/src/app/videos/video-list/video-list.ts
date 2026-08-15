@@ -14,13 +14,13 @@ import { extractApiErrorMessage } from '../../core/api/api-error';
  * launch languages plus a couple more, enough to prove the language-hint mechanism works.
  * Extending this list later needs no backend change; the hint is passed straight through.
  *
- * Telugu is deliberately NOT here despite being a required launch language (ProductRequirements
- * §6.2): confirmed live against the real API that OpenAI's hosted whisper-1 rejects "te" for
- * this parameter even though it auto-detects Telugu fine on its own — the backend falls back
- * to auto-detect safely if that ever happens (see OpenAiSpeechToTextProvider), but offering
- * Telugu here would suggest the hint helps when for this specific language it silently does
- * nothing. Revisit if OpenAI's accepted-language list for this parameter ever changes. */
+ * Telugu now works: with RoutedSpeechToTextProvider active, a "te" hint is handled by Sarvam,
+ * which natively accepts it (unlike OpenAI's whisper-1, which rejects Telugu outright for its
+ * language-forcing parameter — see OpenAiSpeechToTextProvider). It was removed from this list
+ * earlier for exactly that reason and is back now that the active provider for this language
+ * actually supports it. */
 export const LANGUAGE_HINT_OPTIONS = [
+  { code: 'te', label: 'Telugu' },
   { code: 'hi', label: 'Hindi' },
   { code: 'en', label: 'English' },
 ];
