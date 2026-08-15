@@ -63,6 +63,15 @@ export interface SubtitleWordResponse {
   isHighlighted: boolean;
 }
 
+/** Matches docs/API.md §3 PATCH .../words/{wordId}/highlight — distinct from
+ * SubtitleWordResponse since it also reports whether the highlight is a manual override. */
+export interface WordHighlightResponse {
+  wordId: string;
+  text: string;
+  isHighlighted: boolean;
+  source: 'Auto' | 'Manual';
+}
+
 export interface PagedResult<T> {
   items: T[];
   page: number;
@@ -99,5 +108,21 @@ export class VideoApi {
       formData.append('languageHint', languageHint);
     }
     return this.http.post<VideoSummary>('/api/v1/videos', formData);
+  }
+
+  /** Corrects a cue's text — does not touch timing. */
+  updateCueText(
+    videoId: string, type: TrackStatusSummary['trackType'], cueId: string, text: string,
+  ): Observable<SubtitleCueResponse> {
+    return this.http.patch<SubtitleCueResponse>(
+      `/api/v1/videos/${videoId}/subtitles/${type}/cues/${cueId}`, { text });
+  }
+
+  /** Manually forces a single word's highlight on or off. */
+  updateWordHighlight(
+    videoId: string, type: TrackStatusSummary['trackType'], wordId: string, highlighted: boolean,
+  ): Observable<WordHighlightResponse> {
+    return this.http.patch<WordHighlightResponse>(
+      `/api/v1/videos/${videoId}/subtitles/${type}/words/${wordId}/highlight`, { highlighted });
   }
 }

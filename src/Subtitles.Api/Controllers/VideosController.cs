@@ -221,6 +221,71 @@ public class VideosController(SubtitlesDbContext db, IVideoStorage storage, JobQ
         return Ok(new VideoGenerationsResponse(id, generations));
     }
 
+    /// <summary>docs/API.md §3 PATCH .../subtitles/{trackType}/cues/{cueId} — corrects a cue's
+    /// text without touching its timing.</summary>
+    [HttpPatch("{id:guid}/subtitles/{trackType}/cues/{cueId:guid}")]
+    public async Task<ActionResult<SubtitleCueResponse>> UpdateCueText(
+        Guid id, SubtitleTrackType trackType, Guid cueId, [FromBody] UpdateCueTextRequest request, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Text))
+        {
+            return BadRequest(ApiError.Of("invalid_request", "Text must not be empty."));
+        }
+
+        var accountId = User.GetAccountId();
+
+        var cue = await db.SubtitleCues
+            .Include(c => c.Words)
+            .SingleOrDefaultAsync(c =>
+                c.Id == cueId &&
+                c.SubtitleTrack.VideoId == id &&
+                c.SubtitleTrack.TrackType == trackType &&
+                c.SubtitleTrack.Video.AccountId == accountId, ct);
+
+        if (cue is null)
+        {
+            return NotFound(ApiError.Of("cue_not_found", "No matching cue found for this video/track."));
+        }
+
+        cue.ApplyManualEdit(request.Text.Trim(), DateTimeOffset.UtcNow);
+        await db.SaveChangesAsync(ct);
+
+        var words = cue.Words
+            .OrderBy(w => w.SequenceNumber)
+            .Select(w => new SubtitleWordResponse(w.Id, w.Text, w.IsHighlighted))
+            .ToList();
+
+        return Ok(new SubtitleCueResponse(
+            cue.Id, cue.SequenceNumber, cue.StartTimeMs, cue.EndTimeMs, cue.Text, cue.IsManuallyEdited, words));
+    }
+
+    /// <summary>docs/API.md §3 PATCH .../subtitles/{trackType}/words/{wordId}/highlight —
+    /// manually forces a single word's highlight on or off.</summary>
+    [HttpPatch("{id:guid}/subtitles/{trackType}/words/{wordId:guid}/highlight")]
+    public async Task<ActionResult<WordHighlightResponse>> UpdateWordHighlight(
+        Guid id, SubtitleTrackType trackType, Guid wordId, [FromBody] UpdateWordHighlightRequest request, CancellationToken ct)
+    {
+        var accountId = User.GetAccountId();
+
+        var word = await db.Words
+            .SingleOrDefaultAsync(w =>
+                w.Id == wordId &&
+                w.Cue.SubtitleTrack.VideoId == id &&
+                w.Cue.SubtitleTrack.TrackType == trackType &&
+                w.Cue.SubtitleTrack.Video.AccountId == accountId, ct);
+
+        if (word is null)
+        {
+            return NotFound(ApiError.Of("word_not_found", "No matching word found for this video/track."));
+        }
+
+        word.SetManualHighlight(request.Highlighted);
+        await db.SaveChangesAsync(ct);
+
+        var source = word.IsHighlightedManualOverride is not null ? "Manual" : "Auto";
+        return Ok(new WordHighlightResponse(word.Id, word.Text, word.IsHighlighted, source));
+    }
+
     private static GenerationStage TrackTypeToGenerationStage(SubtitleTrackType type) => type switch
     {
         SubtitleTrackType.Native => GenerationStage.NativeCleanup,

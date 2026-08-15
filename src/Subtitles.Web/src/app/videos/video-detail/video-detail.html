@@ -96,15 +96,74 @@
                 <ul class="cue-list">
                   @for (cue of track.cues; track cue.cueId) {
                     <li class="cue-row">
-                      <span class="cue-timing">
-                        {{ formatTimestamp(cue.startTimeMs) }} – {{ formatTimestamp(cue.endTimeMs) }}
-                      </span>
-                      <p class="cue-text">
-                        @for (word of cue.words; track word.wordId) {
-                          <span class="word" [class.highlighted]="word.isHighlighted">{{ word.text }}</span
-                          >{{ ' ' }}
+                      <div class="cue-row-header">
+                        <span class="cue-timing">
+                          {{ formatTimestamp(cue.startTimeMs) }} – {{ formatTimestamp(cue.endTimeMs) }}
+                        </span>
+                        @if (cue.isManuallyEdited) {
+                          <span class="edited-badge" matTooltip="Manually edited">
+                            <mat-icon>edit</mat-icon>
+                            Edited
+                          </span>
                         }
-                      </p>
+                        @if (editingCueId() !== cue.cueId) {
+                          <button
+                            mat-icon-button
+                            class="cue-edit-button"
+                            matTooltip="Edit this line"
+                            (click)="startEditingCue(cue)"
+                          >
+                            <mat-icon>edit</mat-icon>
+                          </button>
+                        }
+                      </div>
+
+                      @if (editingCueId() === cue.cueId) {
+                        <div class="cue-edit-form">
+                          <textarea
+                            class="cue-edit-input"
+                            rows="2"
+                            [ngModel]="editBuffer()"
+                            (ngModelChange)="editBuffer.set($event)"
+                          ></textarea>
+
+                          @if (cueEditError()) {
+                            <p class="cue-edit-error" role="alert">{{ cueEditError() }}</p>
+                          }
+
+                          <div class="cue-edit-actions">
+                            <button mat-button type="button" [disabled]="savingCueId() === cue.cueId" (click)="cancelEditingCue()">
+                              Cancel
+                            </button>
+                            <button
+                              mat-flat-button
+                              color="primary"
+                              type="button"
+                              [disabled]="savingCueId() === cue.cueId"
+                              (click)="saveEditingCue(type)"
+                            >
+                              @if (savingCueId() === cue.cueId) {
+                                <mat-spinner diameter="18" />
+                              } @else {
+                                Save
+                              }
+                            </button>
+                          </div>
+                        </div>
+                      } @else {
+                        <p class="cue-text">
+                          @for (word of cue.words; track word.wordId) {
+                            <span
+                              class="word"
+                              [class.highlighted]="word.isHighlighted"
+                              [class.saving]="savingWordId() === word.wordId"
+                              matTooltip="Click to toggle highlight"
+                              (click)="toggleWordHighlight(type, cue.cueId, word.wordId, word.isHighlighted)"
+                              >{{ word.text }}</span
+                            >{{ ' ' }}
+                          }
+                        </p>
+                      }
                     </li>
                   }
                 </ul>

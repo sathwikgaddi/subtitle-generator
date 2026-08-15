@@ -78,12 +78,43 @@
   border-radius: 8px;
 }
 
-.cue-timing {
-  display: block;
+.cue-row-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 4px;
+}
+
+.cue-timing {
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
+}
+
+.edited-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.75rem;
+
+  mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.cue-edit-button {
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
 }
 
 .cue-text {
@@ -91,9 +122,56 @@
   line-height: 1.6;
 }
 
+.word {
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 0 2px;
+
+  &:hover {
+    background: var(--mat-sys-surface-variant);
+  }
+}
+
 .word.highlighted {
   background: var(--highlight);
   color: var(--highlight-ink);
-  border-radius: 3px;
-  padding: 0 2px;
+
+  &:hover {
+    background: var(--highlight);
+    opacity: 0.85;
+  }
+}
+
+.word.saving {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.cue-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cue-edit-input {
+  width: 100%;
+  padding: 8px;
+  font: inherit;
+  color: inherit;
+  background: var(--mat-sys-surface-container);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 4px;
+  resize: vertical;
+}
+
+.cue-edit-error {
+  margin: 0;
+  color: var(--mat-sys-error);
+  font-size: 0.875rem;
+}
+
+.cue-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
