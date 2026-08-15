@@ -15,6 +15,7 @@ import {
   TrackStatusSummary,
   SubtitleTrackResponse,
   SubtitleCueResponse,
+  ExportFormat,
 } from '../video-api';
 import { extractApiErrorMessage } from '../../core/api/api-error';
 
@@ -67,6 +68,9 @@ export class VideoDetail {
   readonly cueEditError = signal<string | null>(null);
 
   readonly savingWordId = signal<string | null>(null);
+
+  readonly exportingFormat = signal<ExportFormat | null>(null);
+  readonly exportError = signal<string | null>(null);
 
   constructor() {
     // Per docs/API.md §2: GET /videos/{id} is the only status mechanism (no push channel) —
@@ -191,6 +195,43 @@ export class VideoDetail {
         this.savingWordId.set(null);
       },
     });
+  }
+
+  exportSubtitles(type: TrackStatusSummary['trackType'], format: ExportFormat): void {
+    if (this.exportingFormat()) {
+      return;
+    }
+
+    this.exportingFormat.set(format);
+    this.exportError.set(null);
+
+    this.videoApi.createExport(this.videoId, type, format).subscribe({
+      next: (created) => {
+        this.videoApi.downloadExport(created.exportId).subscribe({
+          next: (blob) => {
+            this.triggerBrowserDownload(blob, `${type.toLowerCase()}.${format.toLowerCase()}`);
+            this.exportingFormat.set(null);
+          },
+          error: (err) => {
+            this.exportError.set(extractApiErrorMessage(err, 'Could not download the export.'));
+            this.exportingFormat.set(null);
+          },
+        });
+      },
+      error: (err) => {
+        this.exportError.set(extractApiErrorMessage(err, 'Could not create the export.'));
+        this.exportingFormat.set(null);
+      },
+    });
+  }
+
+  private triggerBrowserDownload(blob: Blob, fileName: string): void {
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(objectUrl);
   }
 
   private replaceCue(type: TrackStatusSummary['trackType'], updatedCue: SubtitleCueResponse): void {

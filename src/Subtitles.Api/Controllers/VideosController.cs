@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -5,6 +6,7 @@ using Subtitles.Api.Auth;
 using Subtitles.Api.Contracts;
 using Subtitles.Domain;
 using Subtitles.Domain.Entities;
+using Subtitles.Domain.Exporting;
 using Subtitles.Domain.Storage;
 using Subtitles.Infrastructure.Data;
 
@@ -316,6 +318,76 @@ public class VideosController(SubtitlesDbContext db, IVideoStorage storage, JobQ
 
         var source = word.IsHighlightedManualOverride is not null ? "Manual" : "Auto";
         return Ok(new WordHighlightResponse(word.Id, word.Text, word.IsHighlighted, source));
+    }
+
+    /// <summary>
+    /// docs/API.md §4 POST /videos/{id}/export. Deliberately returns the real final status
+    /// rather than the documented "Pending" — SRT/VTT rendering here is pure string formatting
+    /// over data already in Postgres (no FFmpeg, no AI call), so it runs synchronously within
+    /// this request instead of going through the job queue the way BurnedInMp4 (P1.14, not yet
+    /// built) will need to.
+    /// </summary>
+    [HttpPost("{id:guid}/export")]
+    public async Task<ActionResult<CreateExportResponse>> CreateExport(
+        Guid id, [FromBody] CreateExportRequest request, CancellationToken ct)
+    {
+        if (!Enum.TryParse<SubtitleTrackType>(request.SubtitleTrackType, out var trackType))
+        {
+            return BadRequest(ApiError.Of(
+                "invalid_request", $"Unknown subtitleTrackType '{request.SubtitleTrackType}'."));
+        }
+
+        if (!Enum.TryParse<ExportFormat>(request.Format, out var format))
+        {
+            return BadRequest(ApiError.Of("invalid_request", $"Unknown format '{request.Format}'."));
+        }
+
+        if (format == ExportFormat.BurnedInMp4)
+        {
+            return BadRequest(ApiError.Of(
+                "unsupported_format", "Burned-in MP4 export isn't available yet."));
+        }
+
+        var accountId = User.GetAccountId();
+
+        var track = await db.SubtitleTracks
+            .Include(t => t.Cues)
+            .SingleOrDefaultAsync(t =>
+                t.VideoId == id && t.TrackType == trackType && t.Video.AccountId == accountId, ct);
+
+        if (track is null)
+        {
+            return NotFound(ApiError.Of("track_not_found", "No matching track found for this video."));
+        }
+
+        if (track.Status != SubtitleTrackStatus.Ready)
+        {
+            return BadRequest(ApiError.Of(
+                "track_not_ready", $"The {trackType} track isn't Ready yet — nothing to export."));
+        }
+
+        var content = format == ExportFormat.SRT
+            ? SubtitleExportFormatter.ToSrt(track.Cues.ToList())
+            : SubtitleExportFormatter.ToVtt(track.Cues.ToList());
+
+        var export = new Export
+        {
+            Id = Guid.NewGuid(),
+            VideoId = id,
+            SubtitleTrackType = trackType,
+            Format = format,
+            CreatedAt = DateTimeOffset.UtcNow,
+        };
+
+        var extension = format == ExportFormat.SRT ? "srt" : "vtt";
+        await using var contentStream = new MemoryStream(Encoding.UTF8.GetBytes(content));
+        export.BlobPath = await storage.SaveAsync(id, $"export-{export.Id}.{extension}", contentStream, ct);
+        export.Status = ExportStatus.Ready;
+
+        db.Exports.Add(export);
+        await db.SaveChangesAsync(ct);
+
+        return Accepted(new CreateExportResponse(export.Id, export.Status.ToString()));
     }
 
     private static GenerationStage TrackTypeToGenerationStage(SubtitleTrackType type) => type switch

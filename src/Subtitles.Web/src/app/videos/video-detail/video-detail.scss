@@ -63,6 +63,17 @@
   padding: 24px 0;
 }
 
+.export-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.export-error {
+  margin: 0 0 16px;
+  color: var(--mat-sys-error);
+}
+
 .cue-list {
   list-style: none;
   margin: 0;

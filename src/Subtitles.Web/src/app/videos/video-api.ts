@@ -79,6 +79,14 @@ export interface PagedResult<T> {
   totalCount: number;
 }
 
+export type ExportFormat = 'SRT' | 'VTT';
+
+/** Matches docs/API.md §4 POST /videos/{id}/export response. */
+export interface CreateExportResponse {
+  exportId: string;
+  status: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class VideoApi {
   private readonly http = inject(HttpClient);
@@ -124,5 +132,21 @@ export class VideoApi {
   ): Observable<WordHighlightResponse> {
     return this.http.patch<WordHighlightResponse>(
       `/api/v1/videos/${videoId}/subtitles/${type}/words/${wordId}/highlight`, { highlighted });
+  }
+
+  /** SRT/VTT rendering is synchronous server-side (see VideosController.CreateExport), so the
+   * returned status is already the real final one — no polling needed for these two formats. */
+  createExport(
+    videoId: string, type: TrackStatusSummary['trackType'], format: ExportFormat,
+  ): Observable<CreateExportResponse> {
+    return this.http.post<CreateExportResponse>(
+      `/api/v1/videos/${videoId}/export`, { subtitleTrackType: type, format });
+  }
+
+  /** Fetched as a Blob through the authenticated HttpClient rather than a plain link/window.open
+   * — the download endpoint requires the JWT the auth interceptor attaches, which a bare
+   * navigation wouldn't include. */
+  downloadExport(exportId: string): Observable<Blob> {
+    return this.http.get(`/api/v1/exports/${exportId}/download`, { responseType: 'blob' });
   }
 }

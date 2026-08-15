@@ -93,6 +93,42 @@
                   <p>{{ subtitlesError() }}</p>
                 </div>
               } @else if (subtitlesFor(type); as track) {
+                <div class="export-bar">
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    [disabled]="!!exportingFormat()"
+                    (click)="exportSubtitles(type, 'SRT')"
+                  >
+                    @if (exportingFormat() === 'SRT') {
+                      <mat-spinner diameter="18" />
+                    } @else {
+                      <ng-container>
+                        <mat-icon>download</mat-icon>
+                        Export SRT
+                      </ng-container>
+                    }
+                  </button>
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    [disabled]="!!exportingFormat()"
+                    (click)="exportSubtitles(type, 'VTT')"
+                  >
+                    @if (exportingFormat() === 'VTT') {
+                      <mat-spinner diameter="18" />
+                    } @else {
+                      <ng-container>
+                        <mat-icon>download</mat-icon>
+                        Export VTT
+                      </ng-container>
+                    }
+                  </button>
+                </div>
+                @if (exportError()) {
+                  <p class="export-error" role="alert">{{ exportError() }}</p>
+                }
+
                 <ul class="cue-list">
                   @for (cue of track.cues; track cue.cueId) {
                     <li class="cue-row">
