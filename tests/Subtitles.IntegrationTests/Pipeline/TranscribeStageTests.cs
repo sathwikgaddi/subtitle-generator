@@ -22,9 +22,13 @@ public class TranscribeStageTests(PostgresFixture fixture) : IClassFixture<Postg
     {
         public string ProviderName => "fake";
         public string ModelName => "fake-model";
+        public string? LastLanguageHint { get; private set; }
 
-        public Task<TranscriptionResult> TranscribeAsync(Stream audio, string fileName, CancellationToken ct)
-            => Task.FromResult(result);
+        public Task<TranscriptionResult> TranscribeAsync(Stream audio, string fileName, string? languageHint, CancellationToken ct)
+        {
+            LastLanguageHint = languageHint;
+            return Task.FromResult(result);
+        }
     }
 
     private static readonly TranscriptionResult SampleResult = new(
@@ -67,6 +71,31 @@ public class TranscribeStageTests(PostgresFixture fixture) : IClassFixture<Postg
             Assert.Equal("fake", generation.SpeechProvider);
             Assert.Equal("fake-model", generation.SpeechModel);
             Assert.Equal(GenerationReasons.Initial, generation.Reason);
+        }
+        finally
+        {
+            storageRoot.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithVideoLanguageHint_PassesItToTheProvider()
+    {
+        var storageRoot = Directory.CreateTempSubdirectory("subtitles-storage-test-");
+        try
+        {
+            var storage = new LocalDiskVideoStorage(
+                Options.Create(new LocalDiskOptions { RootPath = storageRoot.FullName }));
+
+            await using var db = fixture.CreateDbContext();
+            var (accountId, userId) = await SeedAccountAsync(db);
+            var videoId = await SeedVideoWithAudioAsync(db, storage, accountId, userId, languageHint: "te");
+
+            var provider = new FakeSpeechToTextProvider(SampleResult);
+            var stage = new TranscribeStage(db, storage, provider);
+            await stage.ExecuteAsync(videoId, CancellationToken.None);
+
+            Assert.Equal("te", provider.LastLanguageHint);
         }
         finally
         {
@@ -125,7 +154,7 @@ public class TranscribeStageTests(PostgresFixture fixture) : IClassFixture<Postg
     }
 
     private static async Task<Guid> SeedVideoWithAudioAsync(
-        SubtitlesDbContext db, LocalDiskVideoStorage storage, Guid accountId, Guid userId)
+        SubtitlesDbContext db, LocalDiskVideoStorage storage, Guid accountId, Guid userId, string? languageHint = null)
     {
         var videoId = Guid.NewGuid();
 
@@ -143,6 +172,7 @@ public class TranscribeStageTests(PostgresFixture fixture) : IClassFixture<Postg
             OriginalFileName = "input.mp4",
             BlobPath = "unused",
             AudioBlobPath = audioBlobPath,
+            LanguageHint = languageHint,
             Status = VideoStatus.Processing,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,

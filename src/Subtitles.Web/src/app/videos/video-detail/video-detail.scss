@@ -1,0 +1,99 @@
+@use '../page-shared' as *;
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 16px;
+  color: var(--mat-sys-on-surface-variant);
+  text-decoration: none;
+  font-size: 0.875rem;
+
+  &:hover {
+    color: var(--mat-sys-on-surface);
+  }
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.status-chip {
+  ::ng-deep .mdc-evolution-chip__icon--primary {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.status-ready mat-icon {
+  color: var(--mat-sys-primary);
+}
+
+.status-failed mat-icon {
+  color: var(--mat-sys-error);
+}
+
+.tab-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tab-status-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+}
+
+.tab-status-ready {
+  color: var(--mat-sys-primary);
+}
+
+.tab-status-failed {
+  color: var(--mat-sys-error);
+}
+
+.tab-status-pending {
+  color: var(--mat-sys-outline);
+}
+
+.tab-content {
+  padding: 24px 0;
+}
+
+.cue-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cue-row {
+  padding: 16px;
+  background: var(--mat-sys-surface);
+  border-radius: 8px;
+}
+
+.cue-timing {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.cue-text {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.word.highlighted {
+  background: var(--highlight);
+  color: var(--highlight-ink);
+  border-radius: 3px;
+  padding: 0 2px;
+}

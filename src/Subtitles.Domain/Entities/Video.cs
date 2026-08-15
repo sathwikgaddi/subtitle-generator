@@ -20,6 +20,15 @@ public class Video
     public string? DetectedLanguageCode { get; set; }
     public decimal? DetectedLanguageConfidence { get; set; }
 
+    /// <summary>
+    /// Optional creator-provided language hint (ISO-639-1, e.g. "te"), set at upload time.
+    /// When present, Transcribe passes it straight to the Speech-to-Text Provider to skip
+    /// auto-detection and bias the decoder toward that language's vocabulary — a real accuracy
+    /// lever for lower-resource languages, not just a UI nicety. Null means auto-detect, the
+    /// default per docs/ProductRequirements.md §6.2 ("no manual language selection required").
+    /// </summary>
+    public string? LanguageHint { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 

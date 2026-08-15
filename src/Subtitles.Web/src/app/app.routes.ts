@@ -25,6 +25,10 @@ export const routes: Routes = [
         path: 'videos',
         loadComponent: () => import('./videos/video-list/video-list').then((m) => m.VideoList),
       },
+      {
+        path: 'videos/:id',
+        loadComponent: () => import('./videos/video-detail/video-detail').then((m) => m.VideoDetail),
+      },
     ],
   },
   { path: '**', redirectTo: '' },

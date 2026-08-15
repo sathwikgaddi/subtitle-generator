@@ -1,0 +1,118 @@
+<div class="page">
+  <a class="back-link" routerLink="/videos">
+    <mat-icon>arrow_back</mat-icon>
+    Back to videos
+  </a>
+
+  @if (loading()) {
+    <div class="state-panel">
+      <mat-spinner diameter="32" />
+    </div>
+  } @else if (errorMessage()) {
+    <div class="state-panel">
+      <mat-icon class="state-icon state-icon-error">error_outline</mat-icon>
+      <p>{{ errorMessage() }}</p>
+    </div>
+  } @else if (video(); as v) {
+    <header class="page-header">
+      <div>
+        <h1>{{ v.originalFileName }}</h1>
+        <p class="page-subtitle">
+          @if (v.detectedLanguageCode) {
+            Detected language: {{ v.detectedLanguageCode }}
+          } @else {
+            Detecting language…
+          }
+        </p>
+      </div>
+
+      <mat-chip-set>
+        @switch (v.status) {
+          @case ('Ready') {
+            <mat-chip class="status-chip status-ready">
+              <mat-icon matChipAvatar>check_circle</mat-icon>
+              Ready
+            </mat-chip>
+          }
+          @case ('Failed') {
+            <mat-chip class="status-chip status-failed">
+              <mat-icon matChipAvatar>error</mat-icon>
+              Failed
+            </mat-chip>
+          }
+          @default {
+            <mat-chip class="status-chip status-processing">
+              <mat-spinner matChipAvatar diameter="16" />
+              {{ v.status }}
+            </mat-chip>
+          }
+        }
+      </mat-chip-set>
+    </header>
+
+    @if (v.status === 'Failed') {
+      <div class="state-panel">
+        <mat-icon class="state-icon state-icon-error">error_outline</mat-icon>
+        <h2>Processing failed</h2>
+        <p>Something went wrong while processing this video.</p>
+      </div>
+    } @else {
+      <mat-tab-group [(selectedIndex)]="selectedIndex">
+        @for (type of trackTypes; track type) {
+          <mat-tab [disabled]="statusFor(type) !== 'Ready'">
+            <ng-template mat-tab-label>
+              <span class="tab-label">
+                {{ type }}
+                @switch (statusFor(type)) {
+                  @case ('Ready') {
+                    <mat-icon class="tab-status-icon tab-status-ready">check_circle</mat-icon>
+                  }
+                  @case ('Failed') {
+                    <mat-icon class="tab-status-icon tab-status-failed">error</mat-icon>
+                  }
+                  @default {
+                    <mat-icon class="tab-status-icon tab-status-pending">schedule</mat-icon>
+                  }
+                }
+              </span>
+            </ng-template>
+
+            <div class="tab-content">
+              @if (statusFor(type) !== 'Ready') {
+                <div class="state-panel">
+                  <mat-icon class="state-icon">hourglass_empty</mat-icon>
+                  <p>This track isn't ready yet.</p>
+                </div>
+              } @else if (subtitlesLoading() === type) {
+                <div class="state-panel">
+                  <mat-spinner diameter="32" />
+                </div>
+              } @else if (subtitlesError()) {
+                <div class="state-panel">
+                  <mat-icon class="state-icon state-icon-error">error_outline</mat-icon>
+                  <p>{{ subtitlesError() }}</p>
+                </div>
+              } @else if (subtitlesFor(type); as track) {
+                <ul class="cue-list">
+                  @for (cue of track.cues; track cue.cueId) {
+                    <li class="cue-row">
+                      <span class="cue-timing">
+                        {{ formatTimestamp(cue.startTimeMs) }} – {{ formatTimestamp(cue.endTimeMs) }}
+                      </span>
+                      <p class="cue-text">
+                        @for (word of cue.words; track word.wordId) {
+                          <span class="word" [class.highlighted]="word.isHighlighted">{{ word.text }}</span
+                          >{{ ' ' }}
+                        }
+                      </p>
+                    </li>
+                  }
+                </ul>
+              }
+            </div>
+          </mat-tab>
+        }
+      </mat-tab-group>
+    }
+  }
+</div>

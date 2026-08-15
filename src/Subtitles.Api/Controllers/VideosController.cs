@@ -26,7 +26,8 @@ public class VideosController(SubtitlesDbContext db, IVideoStorage storage, JobQ
     /// </summary>
     [HttpPost]
     [RequestSizeLimit(3_221_225_472)] // ~3GB, headroom over ProductRequirements.md's 2GB target
-    public async Task<ActionResult<VideoSummary>> Upload(IFormFile file, CancellationToken ct)
+    public async Task<ActionResult<VideoSummary>> Upload(
+        IFormFile file, [FromForm] string? languageHint, CancellationToken ct)
     {
         if (file.Length == 0)
         {
@@ -55,6 +56,10 @@ public class VideosController(SubtitlesDbContext db, IVideoStorage storage, JobQ
                 UploadedByUserId = User.GetUserId(),
                 OriginalFileName = file.FileName,
                 BlobPath = storagePath,
+                // Optional — per docs/ProductRequirements.md §6.2, auto-detect is the default
+                // and no manual selection is required to start processing; this only skips
+                // auto-detection when a creator chooses to help it along.
+                LanguageHint = string.IsNullOrWhiteSpace(languageHint) ? null : languageHint.Trim(),
                 Status = VideoStatus.Processing,
                 CreatedAt = now,
                 UpdatedAt = now,

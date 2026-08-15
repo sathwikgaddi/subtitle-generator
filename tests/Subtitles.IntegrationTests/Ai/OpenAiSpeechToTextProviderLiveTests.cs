@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Subtitles.Domain.Ai;
 using Subtitles.Infrastructure.Ai.OpenAi;
@@ -41,10 +42,10 @@ public class OpenAiSpeechToTextProviderLiveTests(ITestOutputHelper output)
             using var loggingHandler = new LoggingDelegatingHandler(output.WriteLine);
             using var httpClient = new HttpClient(loggingHandler) { BaseAddress = new Uri("https://api.openai.com/v1/") };
             var options = Options.Create(new OpenAiSttOptions { ApiKey = apiKey, Model = model });
-            var provider = new OpenAiSpeechToTextProvider(httpClient, options);
+            var provider = new OpenAiSpeechToTextProvider(httpClient, options, NullLogger<OpenAiSpeechToTextProvider>.Instance);
 
             await using var audioStream = File.OpenRead(audioPath);
-            var result = await provider.TranscribeAsync(audioStream, "tone.mp3", CancellationToken.None);
+            var result = await provider.TranscribeAsync(audioStream, "tone.mp3", null, CancellationToken.None);
 
             output.WriteLine("--- PARSED RESULT ---");
             output.WriteLine($"Model:      {provider.ModelName}");

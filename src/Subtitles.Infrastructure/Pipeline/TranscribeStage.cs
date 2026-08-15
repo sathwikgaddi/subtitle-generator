@@ -29,7 +29,7 @@ public class TranscribeStage(SubtitlesDbContext db, IVideoStorage storage, ISpee
         }
 
         await using var audioStream = await storage.OpenReadAsync(video.AudioBlobPath, ct);
-        var result = await stt.TranscribeAsync(audioStream, "audio.mp3", ct);
+        var result = await stt.TranscribeAsync(audioStream, "audio.mp3", video.LanguageHint, ct);
 
         var wordTimestamps = result.Words
             .Select(w => new WordTimestamp(w.Text, w.StartMs, w.EndMs))

@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Subtitles.Infrastructure.Ai.OpenAi;
 using Subtitles.Infrastructure.UnitTests.TestSupport;
@@ -12,7 +13,7 @@ public class OpenAiSpeechToTextProviderTests
     {
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://api.openai.com/v1/") };
         var options = Options.Create(new OpenAiSttOptions { ApiKey = "test-key", Model = "whisper-1" });
-        return new OpenAiSpeechToTextProvider(httpClient, options);
+        return new OpenAiSpeechToTextProvider(httpClient, options, NullLogger<OpenAiSpeechToTextProvider>.Instance);
     }
 
     [Fact]
@@ -38,7 +39,7 @@ public class OpenAiSpeechToTextProviderTests
         });
         var provider = CreateProvider(handler);
 
-        var result = await provider.TranscribeAsync(new MemoryStream([1, 2, 3]), "audio.mp3", CancellationToken.None);
+        var result = await provider.TranscribeAsync(new MemoryStream([1, 2, 3]), "audio.mp3", null, CancellationToken.None);
 
         Assert.Equal("Eeroju manam matladukundham", result.Text);
         Assert.Equal("telugu", result.LanguageCode);
@@ -59,7 +60,7 @@ public class OpenAiSpeechToTextProviderTests
         });
         var provider = CreateProvider(handler);
 
-        await provider.TranscribeAsync(new MemoryStream([1, 2, 3]), "audio.mp3", CancellationToken.None);
+        await provider.TranscribeAsync(new MemoryStream([1, 2, 3]), "audio.mp3", null, CancellationToken.None);
 
         Assert.Contains("whisper-1", handler.LastRequestBody);
         Assert.Contains("verbose_json", handler.LastRequestBody);
@@ -82,7 +83,7 @@ public class OpenAiSpeechToTextProviderTests
         });
         var provider = CreateProvider(handler);
 
-        var result = await provider.TranscribeAsync(new MemoryStream([1, 2, 3]), "audio.mp3", CancellationToken.None);
+        var result = await provider.TranscribeAsync(new MemoryStream([1, 2, 3]), "audio.mp3", null, CancellationToken.None);
 
         Assert.Equal(string.Empty, result.LanguageCode);
         Assert.Equal(0.0, result.LanguageConfidence);
@@ -98,10 +99,95 @@ public class OpenAiSpeechToTextProviderTests
         });
         var provider = CreateProvider(handler);
 
-        var result = await provider.TranscribeAsync(new MemoryStream([1, 2, 3]), "audio.mp3", CancellationToken.None);
+        var result = await provider.TranscribeAsync(new MemoryStream([1, 2, 3]), "audio.mp3", null, CancellationToken.None);
 
         Assert.Equal("english", result.LanguageCode);
         Assert.Equal(1.0, result.LanguageConfidence);
+    }
+
+    [Fact]
+    public async Task TranscribeAsync_WhenLanguageHintIsRejected_FallsBackToAutoDetect()
+    {
+        // Confirmed live: OpenAI's hosted whisper-1 rejects some languages Whisper can
+        // perfectly well auto-detect (e.g. Telugu) when forced via the "language" parameter —
+        // this locks in the fallback so a rejected hint degrades to auto-detect instead of
+        // failing the whole transcription.
+        var callCount = 0;
+        var handler = new FakeHttpMessageHandler(_ =>
+        {
+            callCount++;
+            if (callCount == 1)
+            {
+                return new HttpResponseMessage(HttpStatusCode.BadRequest)
+                {
+                    Content = new StringContent(
+                        """{"error":{"message":"Language 'te' is not supported.","type":"invalid_request_error","param":"language","code":"unsupported_language"}}"""),
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""{"task":"transcribe","language":"telugu","duration":3.0,"text":"hi","words":[]}"""),
+            };
+        });
+        var provider = CreateProvider(handler);
+
+        var result = await provider.TranscribeAsync(new MemoryStream([1, 2, 3]), "audio.mp3", "te", CancellationToken.None);
+
+        Assert.Equal(2, callCount);
+        Assert.Equal("telugu", result.LanguageCode);
+        Assert.DoesNotContain("name=language", handler.LastRequestBody); // the retry omitted the hint
+    }
+
+    [Fact]
+    public async Task TranscribeAsync_WithUnrelatedError_DoesNotRetry()
+    {
+        var callCount = 0;
+        var handler = new FakeHttpMessageHandler(_ =>
+        {
+            callCount++;
+            return new HttpResponseMessage(HttpStatusCode.BadRequest)
+            {
+                Content = new StringContent("""{"error":{"message":"invalid file format"}}"""),
+            };
+        });
+        var provider = CreateProvider(handler);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            provider.TranscribeAsync(new MemoryStream([1, 2, 3]), "audio.mp3", "te", CancellationToken.None));
+
+        Assert.Equal(1, callCount); // no retry for an error unrelated to the language hint
+    }
+
+    [Fact]
+    public async Task TranscribeAsync_WithLanguageHint_IncludesLanguageFieldInRequest()
+    {
+        const string fixture = """{"text":"x","language":"telugu","words":[]}""";
+        var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(fixture),
+        });
+        var provider = CreateProvider(handler);
+
+        await provider.TranscribeAsync(new MemoryStream([1, 2, 3]), "audio.mp3", "te", CancellationToken.None);
+
+        Assert.Contains("name=language", handler.LastRequestBody);
+        Assert.Contains("\r\n\r\nte", handler.LastRequestBody);
+    }
+
+    [Fact]
+    public async Task TranscribeAsync_WithoutLanguageHint_OmitsLanguageField()
+    {
+        const string fixture = """{"text":"x","language":"telugu","words":[]}""";
+        var handler = new FakeHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(fixture),
+        });
+        var provider = CreateProvider(handler);
+
+        await provider.TranscribeAsync(new MemoryStream([1, 2, 3]), "audio.mp3", null, CancellationToken.None);
+
+        Assert.DoesNotContain("name=language", handler.LastRequestBody);
     }
 
     [Fact]
@@ -114,7 +200,7 @@ public class OpenAiSpeechToTextProviderTests
         var provider = CreateProvider(handler);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            provider.TranscribeAsync(new MemoryStream([1, 2, 3]), "audio.mp3", CancellationToken.None));
+            provider.TranscribeAsync(new MemoryStream([1, 2, 3]), "audio.mp3", null, CancellationToken.None));
 
         Assert.Contains("invalid file format", ex.Message);
     }
