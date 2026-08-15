@@ -15,10 +15,18 @@ public interface ISpeechToTextProvider
     Task<TranscriptionResult> TranscribeAsync(Stream audio, string fileName, string? languageHint, CancellationToken ct);
 }
 
+/// <summary>
+/// ProviderName/ModelName here (not just the ISpeechToTextProvider instance's own fixed
+/// properties) are what TranscribeStage records as provenance — necessary once more than one
+/// concrete provider can be in play for a single video (see RoutedSpeechToTextProvider), where
+/// which provider actually handled a given call varies per call, not per app instance.
+/// </summary>
 public sealed record TranscriptionResult(
     string Text,
     string LanguageCode,
     double LanguageConfidence,
-    IReadOnlyList<TranscriptionWord> Words);
+    IReadOnlyList<TranscriptionWord> Words,
+    string ProviderName,
+    string ModelName);
 
 public sealed record TranscriptionWord(string Text, int StartMs, int EndMs);

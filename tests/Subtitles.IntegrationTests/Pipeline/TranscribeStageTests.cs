@@ -39,7 +39,9 @@ public class TranscribeStageTests(PostgresFixture fixture) : IClassFixture<Postg
         [
             new TranscriptionWord("hello", 0, 400),
             new TranscriptionWord("world", 400, 800),
-        ]);
+        ],
+        ProviderName: "fake",
+        ModelName: "fake-model");
 
     [Fact]
     public async Task ExecuteAsync_WithNoExistingTranscript_CreatesTranscriptAndUpdatesVideo()

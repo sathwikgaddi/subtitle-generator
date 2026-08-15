@@ -81,7 +81,7 @@ public class OpenAiSpeechToTextProvider(
         // exposes, so 0.0/1.0 here means "did Whisper detect a language," not a true
         // probability — ProductRequirements.md §6.2's low-confidence UX should treat this
         // binary correctly rather than expecting a graded score.
-        return new TranscriptionResult(text, language ?? string.Empty, language is null ? 0.0 : 1.0, words);
+        return new TranscriptionResult(text, language ?? string.Empty, language is null ? 0.0 : 1.0, words, ProviderName, ModelName);
     }
 
     private async Task<(HttpStatusCode StatusCode, string Body)> SendTranscriptionRequestAsync(

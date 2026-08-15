@@ -59,8 +59,11 @@ public class TranscribeStage(SubtitlesDbContext db, IVideoStorage storage, ISpee
             db.AiGenerations.Add(generation);
         }
 
-        generation.SpeechProvider = stt.ProviderName;
-        generation.SpeechModel = stt.ModelName;
+        // From the result, not stt.ProviderName/ModelName — with a routing provider in play
+        // (RoutedSpeechToTextProvider), which concrete provider actually handled this specific
+        // call varies per call, not per app instance.
+        generation.SpeechProvider = result.ProviderName;
+        generation.SpeechModel = result.ModelName;
         generation.Reason = GenerationReasons.Initial;
         generation.GeneratedAt = DateTimeOffset.UtcNow;
 

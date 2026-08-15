@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Subtitles.Domain.Ai;
 using Subtitles.Infrastructure.Ai.OpenAi;
+using Subtitles.Infrastructure.Ai.Sarvam;
 
 namespace Subtitles.Infrastructure.Ai;
 
@@ -26,20 +27,56 @@ public static class AiServiceCollectionExtensions
         switch (provider)
         {
             case "OpenAi":
-                services.AddOptions<OpenAiSttOptions>()
-                    .Bind(configuration.GetSection("Ai:SpeechToText:OpenAi"))
-                    .PostConfigure(o => o.ApiKey = configuration["OPENAI_API_KEY"] ?? string.Empty)
-                    .ValidateDataAnnotations()
+                RegisterOpenAiSttClient(services, configuration);
+                services.AddScoped<ISpeechToTextProvider>(sp => sp.GetRequiredService<OpenAiSpeechToTextProvider>());
+                break;
+
+            case "Sarvam":
+                RegisterSarvamSttClient(services, configuration);
+                services.AddScoped<ISpeechToTextProvider>(sp => sp.GetRequiredService<SarvamSpeechToTextProvider>());
+                break;
+
+            // Picks OpenAI or Sarvam per video by language hint (see RoutedSpeechToTextProvider)
+            // — needs both concrete clients registered, unlike the single-provider cases above.
+            case "Routed":
+                RegisterOpenAiSttClient(services, configuration);
+                RegisterSarvamSttClient(services, configuration);
+
+                services.AddOptions<SpeechToTextRoutingOptions>()
+                    .Bind(configuration.GetSection("Ai:SpeechToText:Routed"))
                     .ValidateOnStart();
 
-                services.AddHttpClient<ISpeechToTextProvider, OpenAiSpeechToTextProvider>(
-                    client => client.BaseAddress = new Uri("https://api.openai.com/v1/"));
+                services.AddScoped<ISpeechToTextProvider, RoutedSpeechToTextProvider>();
                 break;
 
             default:
                 throw new InvalidOperationException(
                     $"Unknown speech-to-text provider '{provider}' (Ai:SpeechToText:Provider).");
         }
+    }
+
+    private static void RegisterOpenAiSttClient(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<OpenAiSttOptions>()
+            .Bind(configuration.GetSection("Ai:SpeechToText:OpenAi"))
+            .PostConfigure(o => o.ApiKey = configuration["OPENAI_API_KEY"] ?? string.Empty)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddHttpClient<OpenAiSpeechToTextProvider>(
+            client => client.BaseAddress = new Uri("https://api.openai.com/v1/"));
+    }
+
+    private static void RegisterSarvamSttClient(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<SarvamSttOptions>()
+            .Bind(configuration.GetSection("Ai:SpeechToText:Sarvam"))
+            .PostConfigure(o => o.ApiKey = configuration["SARVAM_API_KEY"] ?? string.Empty)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddHttpClient<SarvamSpeechToTextProvider>(
+            client => client.BaseAddress = new Uri("https://api.sarvam.ai/"));
     }
 
     private static void AddLlmProvider(IServiceCollection services, IConfiguration configuration)
