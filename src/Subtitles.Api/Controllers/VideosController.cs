@@ -247,7 +247,24 @@ public class VideosController(SubtitlesDbContext db, IVideoStorage storage, JobQ
             return NotFound(ApiError.Of("cue_not_found", "No matching cue found for this video/track."));
         }
 
-        cue.ApplyManualEdit(request.Text.Trim(), DateTimeOffset.UtcNow);
+        var trimmedText = request.Text.Trim();
+        cue.ApplyManualEdit(trimmedText, DateTimeOffset.UtcNow);
+
+        // The word-level breakdown must be regenerated to match the edited text — an edit can
+        // add/remove/reorder words entirely, so the old Word rows (and whatever highlight state
+        // they carried) no longer correspond to anything real. Starting clean rather than
+        // guessing which old highlight should carry over to the new text.
+        db.Words.RemoveRange(cue.Words);
+        cue.Words.Clear();
+
+        var tokens = trimmedText.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        for (var i = 0; i < tokens.Length; i++)
+        {
+            var word = new Word { Id = Guid.NewGuid(), CueId = cue.Id, SequenceNumber = i + 1, Text = tokens[i] };
+            cue.Words.Add(word);
+            db.Words.Add(word);
+        }
+
         await db.SaveChangesAsync(ct);
 
         var words = cue.Words
