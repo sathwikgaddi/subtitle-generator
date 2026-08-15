@@ -248,19 +248,34 @@ public class VideosController(SubtitlesDbContext db, IVideoStorage storage, JobQ
         }
 
         var trimmedText = request.Text.Trim();
+        var oldWords = cue.Words.OrderBy(w => w.SequenceNumber).ToList();
         cue.ApplyManualEdit(trimmedText, DateTimeOffset.UtcNow);
 
-        // The word-level breakdown must be regenerated to match the edited text — an edit can
-        // add/remove/reorder words entirely, so the old Word rows (and whatever highlight state
-        // they carried) no longer correspond to anything real. Starting clean rather than
-        // guessing which old highlight should carry over to the new text.
+        // The word-level breakdown must be regenerated to match the edited text. Most edits are
+        // small corrections (one word fixed, punctuation tweaked), not a full rewrite, so
+        // wiping every highlight on any edit is overkill — instead, carry over highlight state
+        // for words whose exact text survives the edit, matched left-to-right so a repeated
+        // word (e.g. "the") claims at most one old occurrence rather than every instance
+        // inheriting the first one's state. Only genuinely new/changed words lose their
+        // highlight, since there's nothing real to carry over for those.
         db.Words.RemoveRange(cue.Words);
         cue.Words.Clear();
 
+        var unclaimedOldWords = new List<Word>(oldWords);
         var tokens = trimmedText.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         for (var i = 0; i < tokens.Length; i++)
         {
             var word = new Word { Id = Guid.NewGuid(), CueId = cue.Id, SequenceNumber = i + 1, Text = tokens[i] };
+
+            var matchIndex = unclaimedOldWords.FindIndex(w => w.Text == tokens[i]);
+            if (matchIndex >= 0)
+            {
+                var matched = unclaimedOldWords[matchIndex];
+                word.IsHighlightedAuto = matched.IsHighlightedAuto;
+                word.IsHighlightedManualOverride = matched.IsHighlightedManualOverride;
+                unclaimedOldWords.RemoveAt(matchIndex);
+            }
+
             cue.Words.Add(word);
             db.Words.Add(word);
         }
